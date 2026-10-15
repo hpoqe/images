@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePhotos } from '@/composables/usePhotos'
-import PhotoCard from '@/components/PhotoCard.vue'
+import SphereGallery from '@/components/SphereGallery.vue'
 import PhotoLightbox from '@/components/PhotoLightbox.vue'
 import type { Photo } from '@/types/photo'
 
@@ -64,35 +64,30 @@ function goBack() {
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto px-6 pt-24 pb-16">
-    <button
-      @click="goBack"
-      class="mb-6 text-sm text-accent/60 hover:text-accent transition-colors"
-    >
-      ← 返回分类列表
-    </button>
-
-    <h1 class="text-2xl font-bold text-accent mb-2">
-      {{ categoryNames[categoryId] || categoryId }}
-    </h1>
-    <p class="text-accent/60 text-sm mb-10">
-      共 {{ categoryPhotos.length }} 张照片
-    </p>
-
-    <div class="columns-1 sm:columns-2 lg:columns-3 gap-4">
-      <div
-        v-for="photo in categoryPhotos"
-        :key="photo.id"
-        class="break-inside-avoid mb-4"
+  <div class="min-h-screen pt-24 pb-16">
+    <div class="max-w-6xl mx-auto px-6">
+      <button
+        @click="goBack"
+        class="mb-6 text-sm text-accent/60 hover:text-accent transition-colors"
       >
-        <PhotoCard :photo="photo" @click="openLightbox" />
-      </div>
+        ← 返回分类列表
+      </button>
+
+      <h1 class="text-3xl font-bold text-accent mb-2">
+        {{ categoryNames[categoryId] || categoryId }}
+      </h1>
+      <p class="text-accent/60 text-sm mb-10">
+        共 {{ categoryPhotos.length }} 张照片 · 拖拽旋转地球仪 · 点击照片查看
+      </p>
     </div>
 
-    <div v-if="categoryPhotos.length === 0" class="text-center py-20 text-accent/40">
-      该分类下暂无照片
-    </div>
+    <!-- 地球仪画廊 -->
+    <SphereGallery
+      :photos="categoryPhotos"
+      @click="openLightbox"
+    />
 
+    <!-- Lightbox -->
     <PhotoLightbox
       :photo="currentPhoto"
       :visible="lightboxVisible"
