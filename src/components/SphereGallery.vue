@@ -15,10 +15,13 @@ const rotationY = ref(0)
 let isDragging = false
 let startX = 0
 let startY = 0
+let velocityX = 0
+let velocityY = 0
 let autoRotate = true
 let animationId: number
+let lastTime = 0
 
-const RADIUS = 350
+const RADIUS = 400
 
 function getPhotoStyle(index: number, total: number) {
   const goldenRatio = (1 + Math.sqrt(5)) / 2
@@ -29,26 +32,46 @@ function getPhotoStyle(index: number, total: number) {
   const y = RADIUS * Math.sin(phi) * Math.sin(theta)
   const z = RADIUS * Math.cos(phi)
 
-  const scale = Math.max(0.3, (z + RADIUS) / (2 * RADIUS))
-  const opacity = Math.max(0.2, (z + RADIUS) / (2 * RADIUS))
+  const depth = (z + RADIUS) / (2 * RADIUS)
+  const scale = 0.4 + depth * 0.8
+  const opacity = 0.15 + depth * 0.85
 
   return {
     transform: `translate3d(${x}px, ${y}px, ${z}px) scale(${scale})`,
     opacity,
-    zIndex: Math.round(z + RADIUS),
+    zIndex: Math.round(depth * 1000),
   }
 }
 
-function animate() {
-  if (!autoRotate) return
-  rotationY.value += 0.15
+function animate(time: number) {
+  const delta = lastTime ? (time - lastTime) / 16.67 : 1
+  lastTime = time
+
+  if (!isDragging) {
+    if (autoRotate) {
+      velocityY = 0.12
+      velocityX = 0.02
+    } else {
+      velocityX *= 0.95
+      velocityY *= 0.95
+      if (Math.abs(velocityX) < 0.01 && Math.abs(velocityY) < 0.01) {
+        autoRotate = true
+      }
+    }
+  }
+
+  rotationY.value += velocityY * delta
+  rotationX.value += velocityX * delta
+  rotationX.value = Math.max(-70, Math.min(70, rotationX.value))
+
   animationId = requestAnimationFrame(animate)
 }
 
 function handleMouseDown(e: MouseEvent) {
   isDragging = true
   autoRotate = false
-  cancelAnimationFrame(animationId)
+  velocityX = 0
+  velocityY = 0
   startX = e.clientX
   startY = e.clientY
 }
@@ -57,23 +80,27 @@ function handleMouseMove(e: MouseEvent) {
   if (!isDragging) return
   const deltaX = e.clientX - startX
   const deltaY = e.clientY - startY
-  rotationY.value += deltaX * 0.3
-  rotationX.value -= deltaY * 0.3
-  rotationX.value = Math.max(-60, Math.min(60, rotationX.value))
+  velocityY = deltaX * 0.4
+  velocityX = -deltaY * 0.4
+  rotationY.value += velocityY
+  rotationX.value += velocityX
+  rotationX.value = Math.max(-70, Math.min(70, rotationX.value))
   startX = e.clientX
   startY = e.clientY
 }
 
 function handleMouseUp() {
   isDragging = false
-  setTimeout(() => {
-    autoRotate = true
-    animate()
-  }, 3000)
+}
+
+function handleWheel(e: WheelEvent) {
+  e.preventDefault()
+  velocityY += e.deltaY * 0.05
+  autoRotate = false
 }
 
 onMounted(() => {
-  animate()
+  animationId = requestAnimationFrame(animate)
 })
 
 onUnmounted(() => {
@@ -88,7 +115,9 @@ onUnmounted(() => {
     @mousemove="handleMouseMove"
     @mouseup="handleMouseUp"
     @mouseleave="handleMouseUp"
+    @wheel="handleWheel"
   >
+    <div class="sphere-glow" />
     <div
       class="sphere"
       :style="{ transform: `rotateX(${rotationX}deg) rotateY(${rotationY}deg)` }"
@@ -101,7 +130,17 @@ onUnmounted(() => {
         @click="$emit('click', photo)"
       >
         <img :src="photo.thumb" :alt="photo.title" loading="lazy" />
+        <div class="photo-overlay">
+          <span class="photo-title">{{ photo.title }}</span>
+        </div>
       </div>
+    </div>
+    <div class="sphere-hint">
+      <span>拖拽旋转</span>
+      <span class="mx-2">·</span>
+      <span>滚轮加速</span>
+      <span class="mx-2">·</span>
+      <span>点击放大</span>
     </div>
   </div>
 </template>
@@ -109,18 +148,34 @@ onUnmounted(() => {
 <style scoped>
 .sphere-container {
   width: 100%;
-  height: 700px;
-  perspective: 800px;
+  height: 750px;
+  perspective: 900px;
   cursor: grab;
   overflow: hidden;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: radial-gradient(ellipse at center, rgba(167, 139, 250, 0.03) 0%, transparent 70%);
 }
 
 .sphere-container:active {
   cursor: grabbing;
+}
+
+.sphere-glow {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(167, 139, 250, 0.06) 0%, transparent 60%);
+  pointer-events: none;
+  animation: pulse 4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.1); opacity: 1; }
 }
 
 .sphere {
@@ -128,36 +183,68 @@ onUnmounted(() => {
   height: 0;
   position: relative;
   transform-style: preserve-3d;
-  transition: transform 0.05s linear;
 }
 
 .photo-item {
   position: absolute;
-  width: 120px;
-  height: 90px;
-  left: -60px;
-  top: -45px;
-  border-radius: 8px;
+  width: 140px;
+  height: 100px;
+  left: -70px;
+  top: -50px;
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   cursor: pointer;
   backface-visibility: hidden;
+  transition: box-shadow 0.3s ease;
 }
 
 .photo-item:hover {
-  box-shadow: 0 8px 30px rgba(167, 139, 250, 0.3);
-  z-index: 999 !important;
+  box-shadow: 0 0 30px rgba(167, 139, 250, 0.4), 0 8px 40px rgba(0, 0, 0, 0.5);
+  z-index: 9999 !important;
 }
 
 .photo-item img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: grayscale(100%);
-  transition: filter 0.3s ease;
+  filter: grayscale(80%) brightness(0.9);
+  transition: filter 0.4s ease;
 }
 
 .photo-item:hover img {
-  filter: grayscale(0) contrast(1.2) brightness(1.15) saturate(1.25);
+  filter: grayscale(0%) brightness(1.1) saturate(1.3);
+}
+
+.photo-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 50%);
+  display: flex;
+  align-items: flex-end;
+  padding: 8px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.photo-item:hover .photo-overlay {
+  opacity: 1;
+}
+
+.photo-title {
+  font-size: 11px;
+  color: #e5e5e5;
+  font-weight: 500;
+}
+
+.sphere-hint {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: rgba(229, 229, 229, 0.3);
+  pointer-events: none;
+  white-space: nowrap;
 }
 </style>
