@@ -2,8 +2,8 @@ import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 import { resolve } from 'path'
 
-// https://vite.dev/config/
 export default defineConfig({
+  base: '/images/',
   plugins: [vue()],
   resolve: {
     alias: {
