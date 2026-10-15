@@ -6,7 +6,7 @@ const PAGE_SIZE = 12
 
 export function usePhotos() {
   const allPhotos: Photo[] = photosData as Photo[]
-  const visibleCount = ref(PAGE_SIZE)
+  const visibleCount = ref(allPhotos.length)
   const sentinelRef: Ref<HTMLElement | null> = ref(null)
 
   const visiblePhotos = computed(() => allPhotos.slice(0, visibleCount.value))
@@ -46,6 +46,7 @@ export function usePhotos() {
   })
 
   return {
+    allPhotos,
     visiblePhotos,
     hasMore,
     sentinelRef,

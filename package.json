@@ -8,7 +8,8 @@
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
     "process": "tsx scripts/build-photos.ts",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "classify": "tsx scripts/auto-classify.ts"
   },
   "dependencies": {
     "exifr": "^7.1.3",
